@@ -1,0 +1,1 @@
+# COLMAP SfM + OpenMVS pipeline
