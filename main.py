@@ -1,9 +1,28 @@
 from pathlib import Path
-import subprocess
-
+import datetime
+from util import run_and_log, is_colmap_version_at_least, setup_logger
 
 COLMAP_PATH = "./colmap-x64-windows-cuda/bin/colmap.exe"
-OPENMVS_DIR = "./openmvs_v2.3.0/"
+OPENMVS_DIR = "./OpenMVS_Windows_x64/"
+
+COLMAP_VERSION = "3.12.4"
+
+JST = datetime.timezone(datetime.timedelta(hours=9))
+now = datetime.datetime.now(JST)
+timestamp = now.strftime("%Y%m%d_%H%M%S")
+
+LOG_PATH = f"./{timestamp}.log"
+
+logger = setup_logger(LOG_PATH)
+colmap_ok, colmap_ver = is_colmap_version_at_least(COLMAP_VERSION, COLMAP_PATH)
+if not colmap_ok:
+    logger.warning(f"{colmap_ver} is lower than expected {COLMAP_VERSION}")
+
+
+def run_cmd(cmd):
+    # COLMAP log will be redirected to LOG_PATH
+    # OpenMVS log will not be redirected to LOG_PATH but it will be written in its own log
+    run_and_log(cmd, LOG_PATH)
 
 
 def run_colmap_sfm(
@@ -11,10 +30,10 @@ def run_colmap_sfm(
     image_dir,
     output_root_dir,
     gpu_index=-1,
-    camera_mode="3",  # [AUTO = 0, SINGLE = 1, PER_FOLDER = 2, PER_IMAGE = 3]
-    camera_model="PINHOLE",
+    camera_mode="1",  # [AUTO = 0, SINGLE = 1, PER_FOLDER = 2, PER_IMAGE = 3]
+    camera_model="SIMPLE_RADIAL",  # https://colmap.github.io/cameras.html
     intrinsic_prior=None,
-    sequential_matching=False,
+    sequential_matching=True,
 ):
     # Create output directory
     Path(output_root_dir).mkdir(parents=True, exist_ok=True)
@@ -22,14 +41,12 @@ def run_colmap_sfm(
     (Path(output_root_dir) / "dense").mkdir(parents=True, exist_ok=True)
 
     # Create database
-    subprocess.run(
+    run_cmd(
         [
             COLMAP_PATH,
             "database_creator",
             "--database_path",
             str(database_path),
-            "--image_path",
-            str(image_dir),
         ]
     )
 
@@ -51,6 +68,7 @@ def run_colmap_sfm(
         feature_extraction_cmd.append("--SiftExtraction.use_gpu")
         feature_extraction_cmd.append("0")
 
+    # https://github.com/colmap/colmap/blob/d478af0ce448251b44e6a4525f8bf640f6cdc9e3/src/colmap/exe/feature.h#L69
     # https://github.com/colmap/colmap/blob/107814a1b8ce60c49d0815938934be148d05b5b9/src/colmap/exe/feature.cc#L73
     feature_extraction_cmd.append("--camera_mode")
     feature_extraction_cmd.append(camera_mode)
@@ -61,10 +79,11 @@ def run_colmap_sfm(
         feature_extraction_cmd.append("--ImageReader.camera_params")
         intrinsic_prior_str = ""
         for intrin in intrinsic_prior:
-            intrinsic_prior_str += str(intrin) + " "
+            intrinsic_prior_str += str(intrin) + ","
+        intrinsic_prior_str = intrinsic_prior_str[0:-1]
         feature_extraction_cmd.append(intrinsic_prior_str)
 
-    subprocess.run(feature_extraction_cmd)
+    run_cmd(feature_extraction_cmd)
 
     # Image matching
     matcher_name = "sequential_matcher" if sequential_matching else "exhaustive_matcher"
@@ -77,10 +96,10 @@ def run_colmap_sfm(
     else:
         matching_cmd.append("--SiftMatching.use_gpu")
         matching_cmd.append("0")
-    subprocess.run(matching_cmd)
+    run_cmd(matching_cmd)
 
     # Sparse reconstruction
-    subprocess.run(
+    run_cmd(
         [
             COLMAP_PATH,
             "mapper",
@@ -93,45 +112,60 @@ def run_colmap_sfm(
         ]
     )
 
-    # Model conversion
-    subprocess.run(
-        [
-            COLMAP_PATH,
-            "model_converter",
-            "--input_path",
-            str(output_root_dir) + "/sparse/0/",
-            "--output_path",
-            str(output_root_dir) + "/sparse/model.ply",
-            "--output_type",
-            "PLY",
-        ]
-    )
-    subprocess.run(
-        [
-            COLMAP_PATH,
-            "model_converter",
-            "--input_path",
-            str(output_root_dir) + "/sparse/0/",
-            "--output_path",
-            str(output_root_dir) + "/sparse/",
-            "--output_type",
-            "TXT",
-        ]
-    )
+    # Perform conversion per seperated model
+    cnt = 0
+    converted_base_dir = output_root_dir / "sparse" / "converted"
+    converted_base_dir.mkdir(parents=True, exist_ok=True)
+    while True:
+        # Model conversion
+        sparse_out_dir = output_root_dir / "sparse" / str(cnt)
+        if not sparse_out_dir.exists():
+            break
+        converted_out_dir = converted_base_dir / str(cnt)
+        converted_out_dir.mkdir(parents=True, exist_ok=True)
 
-    # Undistort images
-    subprocess.run(
-        [
-            COLMAP_PATH,
-            "image_undistorter",
-            "--image_path",
-            str(image_dir),
-            "--input_path",
-            str(output_root_dir) + "/sparse",
-            "--output_path",
-            str(output_root_dir),
-        ]
-    )
+        undistort_out_dir = converted_out_dir / "undistort"
+        undistort_out_dir.mkdir(parents=True, exist_ok=True)
+        run_cmd(
+            [
+                COLMAP_PATH,
+                "model_converter",
+                "--input_path",
+                str(sparse_out_dir),
+                "--output_path",
+                str(converted_out_dir) + "/model.ply",
+                "--output_type",
+                "PLY",
+            ]
+        )
+        run_cmd(
+            [
+                COLMAP_PATH,
+                "model_converter",
+                "--input_path",
+                str(sparse_out_dir),
+                "--output_path",
+                str(converted_out_dir),
+                "--output_type",
+                "TXT",
+            ]
+        )
+
+        # Undistort images
+        run_cmd(
+            [
+                COLMAP_PATH,
+                "image_undistorter",
+                "--image_path",
+                str(image_dir),
+                "--input_path",
+                str(converted_out_dir),
+                "--output_path",
+                str(undistort_out_dir),
+            ]
+        )
+
+        cnt += 1
 
 
 def run_openmvs(colmap_output_dense_dir, output_root_dir, refine_mesh=True):
@@ -140,12 +174,8 @@ def run_openmvs(colmap_output_dense_dir, output_root_dir, refine_mesh=True):
 
     mvs_sparse_fname = str(output_root_dir) + "/scene.mvs"
 
-    print(
-        str(colmap_output_dense_dir) + "/images",
-    )
-
     # Convert colmap sparse reconstruction to openmvs format
-    subprocess.run(
+    run_cmd(
         [
             OPENMVS_DIR + "InterfaceCOLMAP ",
             "-i",
@@ -160,7 +190,7 @@ def run_openmvs(colmap_output_dense_dir, output_root_dir, refine_mesh=True):
     )
 
     # Densify point cloud
-    subprocess.run(
+    run_cmd(
         [OPENMVS_DIR + "DensifyPointCloud", mvs_sparse_fname, "-w", output_root_dir]
     )
 
@@ -168,7 +198,7 @@ def run_openmvs(colmap_output_dense_dir, output_root_dir, refine_mesh=True):
 
     # Reconstruct mesh
     mesh_name = "scene_dense_mesh.ply"
-    subprocess.run(
+    run_cmd(
         [
             OPENMVS_DIR + "ReconstructMesh",
             "-i",
@@ -183,7 +213,7 @@ def run_openmvs(colmap_output_dense_dir, output_root_dir, refine_mesh=True):
     if refine_mesh:
         # Refine mesh
         mesh_name = "scene_dense_refine.ply"
-        subprocess.run(
+        run_cmd(
             [
                 OPENMVS_DIR + "RefineMesh",
                 "-i",
@@ -201,7 +231,7 @@ def run_openmvs(colmap_output_dense_dir, output_root_dir, refine_mesh=True):
 
     # Texture mesh
     textured_mesh_name = "scene_dense_texture.ply"
-    subprocess.run(
+    run_cmd(
         [
             OPENMVS_DIR + "TextureMesh",
             "-i",
@@ -216,12 +246,37 @@ def run_openmvs(colmap_output_dense_dir, output_root_dir, refine_mesh=True):
     )
 
 
-def main(image_dir, output_root_dir, gpu_index=0):
+def main(
+    image_dir,
+    output_root_dir,
+    gpu_index=0,
+    camera_mode="1",
+    camera_model="SIMPLE_RADIAL",
+    intrinsic_prior=None,
+    sequential_matching=True,
+):
     database_path = output_root_dir / "colmap" / "database.db"
     run_colmap_sfm(
-        database_path, image_dir, output_root_dir / "colmap", gpu_index=gpu_index
+        database_path,
+        image_dir,
+        output_root_dir / "colmap",
+        gpu_index=gpu_index,
+        camera_mode=camera_mode,
+        camera_model=camera_model,
+        intrinsic_prior=intrinsic_prior,
+        sequential_matching=sequential_matching,
     )
-    run_openmvs(output_root_dir / "colmap", output_root_dir / "openmvs")
+
+    cnt = 0
+    converted_base_dir = output_root_dir / "colmap" / "sparse" / "converted"
+    while True:
+        converted_dir = converted_base_dir / str(cnt)
+        if not converted_dir.exists():
+            break
+        output_openmvs_dir = output_root_dir / "openmvs" / str(cnt)
+        output_openmvs_dir.mkdir(parents=True, exist_ok=True)
+        run_openmvs(converted_dir / "undistort", output_openmvs_dir)
+        cnt += 1
 
 
 if __name__ == "__main__":
