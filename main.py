@@ -179,7 +179,114 @@ def run_colmap_sfm(
         cnt += 1
 
 
-def run_openmvs(colmap_output_dense_dir, output_root_dir, refine_mesh=True):
+def run_colmap_mvs(
+    undistort_dir,
+    gpu_index: int = -1,
+    geom_consistency: bool = True,
+    patchmatch_max_image_size: int = -1,  # COLMAP default
+    patchmatch_window_step: int = 1,  # COLMAP default
+    patchmatch_num_iterations: int = 5,  # COLMAP default
+    patchmatch_window_radius: int = 5,  # COLMAP default
+    patchmatch_num_samples: int = 15,  # COLMAP default
+    stereofusion_min_num_pixels: int = 5,  # StereoFusion.min_num_pixels default
+    use_poisson_mesher: bool = False,  # If True => poisson_mesher; else delaunay_mesher
+    poisson_depth: int = 10,  # Typical 9–12
+    delaunay_quality_regularization: int = 1,
+    delaunay_max_proj_dist: float = 20.0,  # pixels; smaller => stricter
+):
+    """
+    Run COLMAP MVS (PatchMatchStereo -> StereoFusion -> optional meshing)
+    for a single model whose undistorted workspace is at `undistort_dir`.
+
+    Args:
+        undistort_dir: Path to COLMAP 'undistort' workspace (contains images + stereo/)
+        output_dense_dir: Path to write fused point cloud and mesh
+    """
+    undistort_dir = Path(undistort_dir)
+
+    if not undistort_dir.exists():
+        raise FileNotFoundError(f"undistort_dir not found: {undistort_dir}")
+
+    # 1) PatchMatch Stereo (depth/normal estimation)
+    pms_cmd = [
+        COLMAP_PATH,
+        "patch_match_stereo",
+        "--workspace_path",
+        str(undistort_dir),
+        "--workspace_format",
+        "COLMAP",
+        "--PatchMatchStereo.max_image_size",
+        str(patchmatch_max_image_size),
+        "--PatchMatchStereo.window_step",
+        str(patchmatch_window_step),
+        "--PatchMatchStereo.num_iterations",
+        str(patchmatch_num_iterations),
+        "--PatchMatchStereo.window_radius",
+        str(patchmatch_window_radius),
+        "--PatchMatchStereo.num_samples",
+        str(patchmatch_num_samples),
+        "--PatchMatchStereo.geom_consistency",
+        "1" if geom_consistency else "0",
+    ]
+    if gpu_index >= 0:
+        pms_cmd += [
+            "--PatchMatchStereo.gpu_index",
+            str(gpu_index),
+        ]
+
+    run_cmd(pms_cmd)
+
+    # 2) Stereo Fusion (fuse depth maps into a point cloud)
+    fused_ply = undistort_dir / "fused.ply"
+    fusion_cmd = [
+        COLMAP_PATH,
+        "stereo_fusion",
+        "--workspace_path",
+        str(undistort_dir),
+        "--workspace_format",
+        "COLMAP",
+        "--input_type",
+        "geometric",  # use "photometric" if you ran photometric stereo
+        "--output_path",
+        str(fused_ply),
+        "--StereoFusion.min_num_pixels",
+        str(stereofusion_min_num_pixels),
+    ]
+    run_cmd(fusion_cmd)
+
+    # 3) (Optional) Meshing
+    if use_poisson_mesher:
+        mesh_out = undistort_dir / "mesh_poisson.ply"
+        poisson_cmd = [
+            COLMAP_PATH,
+            "poisson_mesher",
+            "--input_path",
+            str(fused_ply),
+            "--output_path",
+            str(mesh_out),
+            "--PoissonMesher.depth",
+            str(poisson_depth),
+        ]
+        run_cmd(poisson_cmd)
+    else:
+        # Delaunay reads the COLMAP workspace (needs images + depth/normal maps)
+        mesh_out = undistort_dir / "mesh_delaunay.ply"
+        delaunay_cmd = [
+            COLMAP_PATH,
+            "delaunay_mesher",
+            "--input_path",
+            str(undistort_dir),
+            "--output_path",
+            str(mesh_out),
+            "--DelaunayMeshing.max_proj_dist",
+            str(delaunay_max_proj_dist),
+            "--DelaunayMeshing.quality_regularization",
+            str(delaunay_quality_regularization)
+        ]
+        run_cmd(delaunay_cmd)
+
+
+def run_openmvs(colmap_output_dense_dir, output_root_dir, refine_mesh=False):
     # Create output directory
     Path(output_root_dir).mkdir(parents=True, exist_ok=True)
 
@@ -238,8 +345,6 @@ def run_openmvs(colmap_output_dense_dir, output_root_dir, refine_mesh=True):
             ]
         )
 
-    mesh_name = "scene_dense_refine.ply"
-
     # Texture mesh
     textured_mesh_name = "scene_dense_texture.ply"
     run_cmd(
@@ -265,6 +370,9 @@ def main(
     camera_model="SIMPLE_RADIAL",
     intrinsic_prior=None,
     sequential_matching=True,
+    forward_motion=False,
+    use_openmvs=True,
+    fast_colmap_mvs=False
 ):
     database_path = output_root_dir / "colmap" / "database.db"
     run_colmap_sfm(
@@ -276,18 +384,44 @@ def main(
         camera_model=camera_model,
         intrinsic_prior=intrinsic_prior,
         sequential_matching=sequential_matching,
+        forward_motion=forward_motion,
     )
 
-    cnt = 0
-    converted_base_dir = output_root_dir / "colmap" / "sparse" / "converted"
-    while True:
-        converted_dir = converted_base_dir / str(cnt)
-        if not converted_dir.exists():
-            break
-        output_openmvs_dir = output_root_dir / "openmvs" / str(cnt)
-        output_openmvs_dir.mkdir(parents=True, exist_ok=True)
-        run_openmvs(converted_dir / "undistort", output_openmvs_dir)
-        cnt += 1
+    if use_openmvs:
+        cnt = 0
+        converted_base_dir = output_root_dir / "colmap" / "sparse" / "converted"
+        while True:
+            converted_dir = converted_base_dir / str(cnt)
+            if not converted_dir.exists():
+                break
+            output_openmvs_dir = output_root_dir / "openmvs" / str(cnt)
+            output_openmvs_dir.mkdir(parents=True, exist_ok=True)
+            run_openmvs(converted_dir / "undistort", output_openmvs_dir)
+            cnt += 1
+    else:
+        cnt = 0
+        converted_base_dir = output_root_dir / "colmap" / "sparse" / "converted"
+        while True:
+            converted_dir = converted_base_dir / str(cnt)
+            if not converted_dir.exists():
+                break
+            output_dense_dir = output_root_dir / "colmap" / "dense" / str(cnt)
+            output_dense_dir.mkdir(parents=True, exist_ok=True)
+            if fast_colmap_mvs:
+                # https://colmap.github.io/faq.html#speedup-dense-reconstruction
+                # Max image size is 1024, and other parameters are set as half of the default value
+                run_colmap_mvs(
+                    converted_dir / "undistort",
+                    patchmatch_max_image_size=1024,
+                    patchmatch_window_step=2,
+                    patchmatch_num_iterations=3,
+                    patchmatch_window_radius=3,
+                    patchmatch_num_samples=8,
+                )
+            else:
+                run_colmap_mvs(
+                    converted_dir / "undistort")
+            cnt += 1
 
 
 if __name__ == "__main__":
