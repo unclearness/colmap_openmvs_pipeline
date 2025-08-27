@@ -176,6 +176,20 @@ def run_colmap_sfm(
             ]
         )
 
+        # Make undistorted files TXT
+        run_cmd(
+            [
+                COLMAP_PATH,
+                "model_converter",
+                "--input_path",
+                str(undistort_out_dir / "sparse"),
+                "--output_path",
+                str(undistort_out_dir / "sparse"),
+                "--output_type",
+                "TXT",
+            ]
+        )
+
         cnt += 1
 
 
@@ -281,7 +295,7 @@ def run_colmap_mvs(
             "--DelaunayMeshing.max_proj_dist",
             str(delaunay_max_proj_dist),
             "--DelaunayMeshing.quality_regularization",
-            str(delaunay_quality_regularization)
+            str(delaunay_quality_regularization),
         ]
         run_cmd(delaunay_cmd)
 
