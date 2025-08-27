@@ -34,6 +34,7 @@ def run_colmap_sfm(
     camera_model="SIMPLE_RADIAL",  # https://colmap.github.io/cameras.html
     intrinsic_prior=None,
     sequential_matching=True,
+    forward_motion=False,
 ):
     # Create output directory
     Path(output_root_dir).mkdir(parents=True, exist_ok=True)
@@ -99,18 +100,28 @@ def run_colmap_sfm(
     run_cmd(matching_cmd)
 
     # Sparse reconstruction
-    run_cmd(
-        [
-            COLMAP_PATH,
-            "mapper",
-            "--database_path",
-            str(database_path),
-            "--image_path",
-            str(image_dir),
-            "--output_path",
-            str(output_root_dir) + "/sparse",
-        ]
-    )
+    mapper_cmd = [
+        COLMAP_PATH,
+        "mapper",
+        "--database_path",
+        str(database_path),
+        "--image_path",
+        str(image_dir),
+        "--output_path",
+        str(output_root_dir) + "/sparse",
+    ]
+    if forward_motion:
+        # https://github.com/colmap/colmap/issues/1490
+        mapper_cmd.append("--Mapper.init_max_forward_motion")
+        mapper_cmd.append("1.0")
+        mapper_cmd.append("--Mapper.init_min_tri_angle")
+        mapper_cmd.append("0.5")
+        mapper_cmd.append("--Mapper.tri_create_max_angle_error")
+        mapper_cmd.append("0.5")
+        mapper_cmd.append("--Mapper.filter_min_tri_angle")
+        mapper_cmd.append("0.5")
+
+    run_cmd(mapper_cmd)
 
     # Perform conversion per seperated model
     cnt = 0
