@@ -203,6 +203,8 @@ def run_colmap_mvs(
     patchmatch_window_radius: int = 5,  # COLMAP default
     patchmatch_num_samples: int = 15,  # COLMAP default
     stereofusion_min_num_pixels: int = 5,  # StereoFusion.min_num_pixels default
+    stereofusion_max_reproj_error: float = 2.0,  # StereoFusion.max_reproj_error default
+    stereofusion_max_depth_error: float = 0.01,  # StereoFusion.max_depth_error default
     use_poisson_mesher: bool = False,  # If True => poisson_mesher; else delaunay_mesher
     poisson_depth: int = 10,  # Typical 9–12
     delaunay_quality_regularization: int = 1,
@@ -265,6 +267,10 @@ def run_colmap_mvs(
         str(fused_ply),
         "--StereoFusion.min_num_pixels",
         str(stereofusion_min_num_pixels),
+        "--StereoFusion.max_reproj_error",
+        str(stereofusion_max_reproj_error),
+        "--StereoFusion.max_depth_error",
+        str(stereofusion_max_depth_error),
     ]
     run_cmd(fusion_cmd)
 
