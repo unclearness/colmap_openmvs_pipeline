@@ -35,6 +35,7 @@ def run_colmap_sfm(
     intrinsic_prior=None,
     sequential_matching=True,
     forward_motion=False,
+    ba_fixed_camera_intrinsics=False,
 ):
     # Create output directory
     Path(output_root_dir).mkdir(parents=True, exist_ok=True)
@@ -120,6 +121,14 @@ def run_colmap_sfm(
         mapper_cmd.append("0.5")
         mapper_cmd.append("--Mapper.filter_min_tri_angle")
         mapper_cmd.append("0.5")
+    
+    if ba_fixed_camera_intrinsics:
+        mapper_cmd.append("--Mapper.ba_refine_focal_length")
+        mapper_cmd.append("0")
+        mapper_cmd.append("--Mapper.ba_refine_principal_point")
+        mapper_cmd.append("0")
+        mapper_cmd.append("--Mapper.ba_refine_extra_params")
+        mapper_cmd.append("0")
 
     run_cmd(mapper_cmd)
 
