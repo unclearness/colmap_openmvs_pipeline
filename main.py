@@ -135,7 +135,7 @@ def run_colmap_sfm(
         converted_out_dir = converted_base_dir / str(cnt)
         converted_out_dir.mkdir(parents=True, exist_ok=True)
 
-        undistort_out_dir = converted_out_dir / "undistort"
+        undistort_out_dir = output_root_dir / "dense" / str(cnt)
         undistort_out_dir.mkdir(parents=True, exist_ok=True)
         run_cmd(
             [
@@ -414,9 +414,10 @@ def main(
             converted_dir = converted_base_dir / str(cnt)
             if not converted_dir.exists():
                 break
+            colmap_dense_dir = output_root_dir / "colmap" / "dense" / str(cnt)
             output_openmvs_dir = output_root_dir / "openmvs" / str(cnt)
             output_openmvs_dir.mkdir(parents=True, exist_ok=True)
-            run_openmvs(converted_dir / "undistort", output_openmvs_dir)
+            run_openmvs(colmap_dense_dir, output_openmvs_dir)
             cnt += 1
     else:
         cnt = 0
@@ -431,7 +432,7 @@ def main(
                 # https://colmap.github.io/faq.html#speedup-dense-reconstruction
                 # Max image size is 1024, and other parameters are set as half of the default value
                 run_colmap_mvs(
-                    converted_dir / "undistort",
+                    output_dense_dir,
                     patchmatch_max_image_size=1024,
                     patchmatch_window_step=2,
                     patchmatch_num_iterations=3,
@@ -439,8 +440,7 @@ def main(
                     patchmatch_num_samples=8,
                 )
             else:
-                run_colmap_mvs(
-                    converted_dir / "undistort")
+                run_colmap_mvs(output_dense_dir)
             cnt += 1
 
 
