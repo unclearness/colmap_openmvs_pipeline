@@ -61,13 +61,21 @@ def run_colmap_sfm(
         "--image_path",
         str(image_dir),
     ]
+
+    if is_colmap_version_at_least("3.13.0", COLMAP_PATH)[0]:
+        extractotr_predix = "FeatureExtraction"
+        feature_extraction_cmd.append("--FeatureExtraction.type")
+        feature_extraction_cmd.append("SIFT")
+    else:
+        extractotr_predix = "SiftExtraction"
+
     if gpu_index >= 0:
-        feature_extraction_cmd.append("--SiftExtraction.use_gpu")
+        feature_extraction_cmd.append(f"--{extractotr_predix}.use_gpu")
         feature_extraction_cmd.append("1")
-        feature_extraction_cmd.append("--SiftExtraction.gpu_index")
+        feature_extraction_cmd.append(f"--{extractotr_predix}.gpu_index")
         feature_extraction_cmd.append(str(gpu_index))
     else:
-        feature_extraction_cmd.append("--SiftExtraction.use_gpu")
+        feature_extraction_cmd.append(f"--{extractotr_predix}.use_gpu")
         feature_extraction_cmd.append("0")
 
     # https://github.com/colmap/colmap/blob/d478af0ce448251b44e6a4525f8bf640f6cdc9e3/src/colmap/exe/feature.h#L69
@@ -90,13 +98,21 @@ def run_colmap_sfm(
     # Image matching
     matcher_name = "sequential_matcher" if sequential_matching else "exhaustive_matcher"
     matching_cmd = [COLMAP_PATH, matcher_name, "--database_path", str(database_path)]
+
+    if is_colmap_version_at_least("3.13.0", COLMAP_PATH)[0]:
+        matching_predix = "FeatureMatching"
+        matching_cmd.append("--FeatureMatching.type")
+        matching_cmd.append("SIFT")
+    else:
+        matching_predix = "SiftMatching"
+
     if gpu_index >= 0:
-        matching_cmd.append("--SiftMatching.use_gpu")
+        matching_cmd.append(f"--{matching_predix}.use_gpu")
         matching_cmd.append("1")
-        matching_cmd.append("--SiftMatching.gpu_index")
+        matching_cmd.append(f"--{matching_predix}.gpu_index")
         matching_cmd.append(str(gpu_index))
     else:
-        matching_cmd.append("--SiftMatching.use_gpu")
+        matching_cmd.append(f"--{matching_predix}.use_gpu")
         matching_cmd.append("0")
     run_cmd(matching_cmd)
 
