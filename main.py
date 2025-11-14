@@ -69,7 +69,7 @@ def run_colmap_sfm(
     else:
         extractotr_predix = "SiftExtraction"
 
-    if gpu_index >= 0:
+    if gpu_index >= -1:
         feature_extraction_cmd.append(f"--{extractotr_predix}.use_gpu")
         feature_extraction_cmd.append("1")
         feature_extraction_cmd.append(f"--{extractotr_predix}.gpu_index")
@@ -106,7 +106,7 @@ def run_colmap_sfm(
     else:
         matching_predix = "SiftMatching"
 
-    if gpu_index >= 0:
+    if gpu_index >= -1:
         matching_cmd.append(f"--{matching_predix}.use_gpu")
         matching_cmd.append("1")
         matching_cmd.append(f"--{matching_predix}.gpu_index")
@@ -269,7 +269,7 @@ def run_colmap_mvs(
         "--PatchMatchStereo.geom_consistency",
         "1" if geom_consistency else "0",
     ]
-    if gpu_index >= 0:
+    if gpu_index >= -1:
         pms_cmd += [
             "--PatchMatchStereo.gpu_index",
             str(gpu_index),
