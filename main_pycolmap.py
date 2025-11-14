@@ -50,7 +50,7 @@ def _resolve_camera_mode(camera_mode: str | int) -> pycolmap.CameraMode:
 
 
 def _select_device(gpu_index: int) -> tuple[pycolmap.Device, str]:
-    if gpu_index >= 0:
+    if gpu_index >= -1:
         if pycolmap.has_cuda:
             return pycolmap.Device.cuda, str(gpu_index)
         logger.warning(
@@ -101,7 +101,7 @@ def run_pycolmap_sfm(
         reader_options.camera_params = list(intrinsic_prior)
 
     extraction_options = pycolmap.FeatureExtractionOptions()
-    extraction_options.use_gpu = gpu_index >= 0 and pycolmap.has_cuda
+    extraction_options.use_gpu = gpu_index >= -1 and pycolmap.has_cuda
     extraction_options.gpu_index = gpu_string
 
     pycolmap.extract_features(
@@ -116,7 +116,7 @@ def run_pycolmap_sfm(
     logger.info("Feature extraction finished")
 
     matching_options = pycolmap.FeatureMatchingOptions()
-    matching_options.use_gpu = gpu_index >= 0 and pycolmap.has_cuda
+    matching_options.use_gpu = gpu_index >= -1 and pycolmap.has_cuda
     matching_options.gpu_index = gpu_string
 
     if sequential_matching:
@@ -215,7 +215,7 @@ def run_pycolmap_mvs(
     stereofusion_max_reproj_error: float = 2.0,
     stereofusion_max_depth_error: float = 0.01,
     use_poisson_mesher: bool = False,
-    poisson_depth: int = 10,
+    poisson_depth: int = 13,
     delaunay_quality_regularization: int = 1,
     delaunay_max_proj_dist: float = 20.0,
 ) -> None:
@@ -256,13 +256,24 @@ def run_pycolmap_mvs(
         mesh_opts.depth = poisson_depth
         logger.info("Running Poisson meshing -> %s", mesh_out)
         pycolmap.poisson_meshing(
-            str(mesh_out),
             str(fused_ply),
+            str(mesh_out),
             options=mesh_opts,
         )
     else:
+        mesh_out = undistort_dir / "mesh_delaunay.ply"
+        delaunay_meshing_opts = pycolmap.DelaunayMeshingOptions()
+        delaunay_meshing_opts.quality_regularization = (
+            delaunay_quality_regularization
+        )
+        delaunay_meshing_opts.max_proj_dist = delaunay_max_proj_dist
+        # pycolmap.dense_delaunay_meshing(
+        #     str(undistort_dir),
+        #     str(mesh_out),
+        #     options=delaunay_meshing_opts,
+        # )
         logger.warning(
-            "Delaunay meshing is not exposed in pycolmap 3.13.0; skipping mesh generation",
+            "Delaunay meshing is not exposed in pycolmap 3.13.0 due to dependency to CGAL; skipping mesh generation",
         )
 
 
@@ -270,7 +281,7 @@ def main(
     image_dir: Path,
     output_root_dir: Path,
     *,
-    gpu_index: int = 0,
+    gpu_index: int = -1,
     camera_mode: str | int = "1",
     camera_model: str = "SIMPLE_RADIAL",
     intrinsic_prior: Sequence[float] | None = None,
