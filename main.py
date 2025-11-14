@@ -69,7 +69,7 @@ def run_colmap_sfm(
     else:
         extractotr_predix = "SiftExtraction"
 
-    if gpu_index >= 0:
+    if gpu_index >= -1:
         feature_extraction_cmd.append(f"--{extractotr_predix}.use_gpu")
         feature_extraction_cmd.append("1")
         feature_extraction_cmd.append(f"--{extractotr_predix}.gpu_index")
@@ -106,7 +106,7 @@ def run_colmap_sfm(
     else:
         matching_predix = "SiftMatching"
 
-    if gpu_index >= 0:
+    if gpu_index >= -1:
         matching_cmd.append(f"--{matching_predix}.use_gpu")
         matching_cmd.append("1")
         matching_cmd.append(f"--{matching_predix}.gpu_index")
@@ -137,7 +137,7 @@ def run_colmap_sfm(
         mapper_cmd.append("0.5")
         mapper_cmd.append("--Mapper.filter_min_tri_angle")
         mapper_cmd.append("0.5")
-    
+
     if ba_fixed_camera_intrinsics:
         mapper_cmd.append("--Mapper.ba_refine_focal_length")
         mapper_cmd.append("0")
@@ -231,7 +231,7 @@ def run_colmap_mvs(
     stereofusion_max_reproj_error: float = 2.0,  # StereoFusion.max_reproj_error default
     stereofusion_max_depth_error: float = 0.01,  # StereoFusion.max_depth_error default
     use_poisson_mesher: bool = False,  # If True => poisson_mesher; else delaunay_mesher
-    poisson_depth: int = 10,  # Typical 9–12
+    poisson_depth: int = 13,  # Typical 9–12
     delaunay_quality_regularization: int = 1,
     delaunay_max_proj_dist: float = 20.0,  # pixels; smaller => stricter
 ):
@@ -269,7 +269,7 @@ def run_colmap_mvs(
         "--PatchMatchStereo.geom_consistency",
         "1" if geom_consistency else "0",
     ]
-    if gpu_index >= 0:
+    if gpu_index >= -1:
         pms_cmd += [
             "--PatchMatchStereo.gpu_index",
             str(gpu_index),
@@ -410,15 +410,18 @@ def run_openmvs(colmap_output_dense_dir, output_root_dir, refine_mesh=False):
 def main(
     image_dir,
     output_root_dir,
-    gpu_index=0,
+    gpu_index=-1,
     camera_mode="1",
     camera_model="SIMPLE_RADIAL",
     intrinsic_prior=None,
     sequential_matching=True,
     forward_motion=False,
     use_openmvs=True,
-    fast_colmap_mvs=False
+    fast_colmap_mvs=False,
 ):
+    image_dir = Path(image_dir)
+    output_root_dir = Path(output_root_dir)
+
     database_path = output_root_dir / "colmap" / "database.db"
     run_colmap_sfm(
         database_path,
@@ -463,9 +466,10 @@ def main(
                     patchmatch_num_iterations=3,
                     patchmatch_window_radius=3,
                     patchmatch_num_samples=8,
+                    gpu_index=gpu_index,
                 )
             else:
-                run_colmap_mvs(output_dense_dir)
+                run_colmap_mvs(output_dense_dir, gpu_index=gpu_index)
             cnt += 1
 
 
