@@ -4,6 +4,16 @@ import argparse
 
 def main(images_dir: Path, stereo_dir: Path):
     stereo_dir.mkdir(parents=True, exist_ok=True)
+
+    depth_maps_dir = stereo_dir / "depth_maps"
+    depth_maps_dir.mkdir(parents=True, exist_ok=True)
+
+    normal_maps_dir = stereo_dir / "normal_maps"
+    normal_maps_dir.mkdir(parents=True, exist_ok=True)
+
+    consistency_graphs_dir = stereo_dir / "consistency_graphs"
+    consistency_graphs_dir.mkdir(parents=True, exist_ok=True)
+
     image_names = images_dir.glob("*.jpg")
     image_names = sorted(image_names)
 
