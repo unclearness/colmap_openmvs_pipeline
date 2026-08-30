@@ -1,0 +1,51 @@
+{
+  "schema_version": 1,
+  "tools": {
+    "colmap": {
+      "version": "4.1.1",
+      "release_url": "https://github.com/colmap/colmap/releases/tag/4.1.1",
+      "license": "BSD-3-Clause",
+      "license_url": "https://github.com/colmap/colmap/blob/4.1.1/LICENSE.txt",
+      "default_variant": "cuda",
+      "variants": {
+        "cuda": {
+          "url": "https://github.com/colmap/colmap/releases/download/4.1.1/colmap-x64-windows-cuda.zip",
+          "sha256": "b06064e7e4bd34f5b4ef71b442d3537d95d57c666dbec5a3b475902ccd832b9b",
+          "archive": "colmap-x64-windows-cuda.zip",
+          "install_dir": "COLMAP-4.1.1",
+          "probe": "bin/colmap.exe"
+        },
+        "nocuda": {
+          "url": "https://github.com/colmap/colmap/releases/download/4.1.1/colmap-x64-windows-nocuda.zip",
+          "sha256": "faf1247d2ec90933aa8bd003709790abf0211cdc132cceec4c831718f2e0895a",
+          "archive": "colmap-x64-windows-nocuda.zip",
+          "install_dir": "COLMAP-4.1.1-nocuda",
+          "probe": "bin/colmap.exe"
+        }
+      }
+    },
+    "openmvs": {
+      "version": "2.4.0",
+      "release_url": "https://github.com/cdcseacave/openMVS/releases/tag/v2.4.0",
+      "license": "AGPL-3.0",
+      "license_url": "https://github.com/cdcseacave/openMVS/blob/v2.4.0/LICENSE",
+      "default_variant": "cuda",
+      "variants": {
+        "cuda": {
+          "url": "https://github.com/cdcseacave/openMVS/releases/download/v2.4.0/OpenMVS_Windows_x64_CUDA.7z",
+          "sha256": "6aac6b14ef478e501d2514cd1d74ed20e659b53b3bc2835d45a473ddfb921621",
+          "archive": "OpenMVS_Windows_x64_CUDA.7z",
+          "install_dir": "OpenMVS-2.4.0-CUDA",
+          "probe": "DensifyPointCloud.exe"
+        },
+        "cpu": {
+          "url": "https://github.com/cdcseacave/openMVS/releases/download/v2.4.0/OpenMVS_Windows_x64.zip",
+          "sha256": "0c31660c15c9ebc4c106873cf67564d9570d404aef7a6403451da1b6178b2167",
+          "archive": "OpenMVS_Windows_x64.zip",
+          "install_dir": "OpenMVS-2.4.0",
+          "probe": "vc17/x64/Release/DensifyPointCloud.exe"
+        }
+      }
+    }
+  }
+}

@@ -1,5 +1,3 @@
-"""Compatibility entry point for the unified reconstruction CLI."""
-
 from recon_pipeline.cli import main
 
 

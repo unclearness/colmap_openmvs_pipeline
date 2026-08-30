@@ -1,0 +1,34 @@
+# Python environments and caches
+.venv/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# Packaging
+build/
+dist/
+*.egg-info/
+
+# Reconstruction runs and local diagnostics
+output/
+output_*/
+runs/
+*.log
+*.log.*
+checks.json
+
+# Downloaded third-party tools. Version metadata stays tracked in
+# tools/manifest.json; the large archives and extracted binaries do not.
+tools/_downloads/
+tools/COLMAP-*/
+tools/OpenMVS-*/
+colmap-x64-windows-cuda/
+OpenMVS_Windows_x64/
+
+# Existing local scratch data
+20251224/
+
+# The repository currently does not use a committed lockfile.
+uv.lock
