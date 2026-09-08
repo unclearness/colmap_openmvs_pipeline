@@ -1,4 +1,4 @@
-"""Download verified, official COLMAP and OpenMVS Windows binaries."""
+"""Download verified official reconstruction tools and model assets."""
 
 from __future__ import annotations
 
@@ -17,7 +17,7 @@ from recon_pipeline.tooling import install_asset, load_manifest  # noqa: E402
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         description=(
-            "Install version-pinned official COLMAP/OpenMVS binaries into tools/. "
+            "Install version-pinned official tools/models into tools/. "
             "Downloads are accepted only when their SHA-256 matches tools/manifest.json."
         )
     )
@@ -25,7 +25,13 @@ def build_parser() -> argparse.ArgumentParser:
         "tools",
         metavar="TOOL",
         nargs="*",
-        choices=("colmap", "openmvs"),
+        choices=(
+            "colmap",
+            "openmvs",
+            "azure-kinect",
+            "orbbec-k4a",
+            "foundationstereo",
+        ),
         help="tool(s) to install; defaults to both",
     )
     parser.add_argument(
@@ -77,6 +83,9 @@ def main(argv: list[str] | None = None) -> int:
     variants = {
         "colmap": args.colmap_variant,
         "openmvs": args.openmvs_variant,
+        "azure-kinect": "windows",
+        "orbbec-k4a": "windows",
+        "foundationstereo": "dynamic",
     }
 
     for tool_name in selected:

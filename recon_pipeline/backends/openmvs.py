@@ -175,7 +175,7 @@ class OpenMVSBackend(ColmapBackend):
                 validate_mesh(current_mesh)
 
         if config.texture:
-            textured_ply = work / "scene_mesh_textured.ply"
+            textured_obj = work / "scene_mesh_textured.obj"
             runner.run(
                 f"openmvs.texture_mesh.{model_id}",
                 [
@@ -185,26 +185,27 @@ class OpenMVSBackend(ColmapBackend):
                     "-m",
                     current_mesh,
                     "-o",
-                    textured_ply,
+                    textured_obj,
                     "-w",
                     work,
+                    "--export-type",
+                    "obj",
                 ],
                 cwd=work,
             )
-            current_mesh = textured_ply
+            current_mesh = textured_obj
             if not runner.dry_run:
                 validate_mesh(current_mesh)
 
         result_dir = layout.mesh / model_id
-        result_mesh = result_dir / "mesh.ply"
+        result_mesh = result_dir / ("mesh.obj" if config.texture else "mesh.ply")
         if not runner.dry_run:
             result_dir.mkdir(parents=True, exist_ok=True)
             shutil.copy2(current_mesh, result_mesh)
             if config.texture:
-                for companion in work.glob(f"{current_mesh.stem}*.png"):
-                    shutil.copy2(companion, result_dir / companion.name)
-                for companion in work.glob(f"{current_mesh.stem}*.jpg"):
-                    shutil.copy2(companion, result_dir / companion.name)
+                for suffix in (".mtl", ".png", ".jpg", ".jpeg"):
+                    for companion in work.glob(f"{current_mesh.stem}*{suffix}"):
+                        shutil.copy2(companion, result_dir / companion.name)
             validate_mesh(result_mesh)
         return dense_result, result_mesh
 

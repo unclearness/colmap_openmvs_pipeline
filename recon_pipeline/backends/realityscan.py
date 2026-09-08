@@ -242,6 +242,10 @@ def build_command(
     quality: str = "normal",
     texture: bool = False,
     no_distortion: bool = False,
+    distortion_model: str | None = None,
+    distortion_prior: str | None = None,
+    shared_intrinsics: bool = False,
+    sensitive_alignment: bool = False,
     assets_dir: Path | None = None,
 ) -> list[str]:
     """Build the official RealityScan CLI argv without filesystem mutations."""
@@ -250,6 +254,22 @@ def build_command(
     quality = quality.lower()
     if quality not in {"normal", "high"}:
         raise ValueError("RealityScan mesh quality must be normal or high")
+    distortion_models = {
+        "division": ("1", "Division"),
+        "brown3": ("2", "Brown3"),
+        "brown4": ("3", "Brown4"),
+        "brown3-tangential2": ("4", "Brown3WithTangential2"),
+        "brown4-tangential2": ("5", "Brown4WithTangential2"),
+    }
+    distortion_priors = {"unknown": "0", "approximate": "1", "fixed": "2"}
+    if distortion_model is not None and distortion_model not in distortion_models:
+        raise ValueError(f"Unsupported RealityScan distortion model: {distortion_model}")
+    if distortion_prior is not None and distortion_prior not in distortion_priors:
+        raise ValueError(f"Unsupported RealityScan distortion prior: {distortion_prior}")
+    if no_distortion and (distortion_model is not None or distortion_prior is not None):
+        raise ValueError(
+            "no_distortion cannot be combined with an explicit distortion model or prior"
+        )
 
     assets = _asset_paths(assets_dir)
     layout = OutputLayout(Path(output_dir))
@@ -274,8 +294,29 @@ def build_command(
         str(image_dir),
         "-selectAllImages",
     ]
+    if shared_intrinsics:
+        argv.extend(("-setConstantCalibrationGroups", "-setPriorLensGroup", "0"))
+    if sensitive_alignment:
+        for key, value in (
+            ("sfmFeatureDetectionQuality", "High"),
+            ("sfmMaxFeaturesPerMpx", "20000"),
+            ("sfmMaxFeaturesPerImage", "80000"),
+            ("sfmImagesOverlap", "High"),
+            ("sfmDetectorSensitivity", "Ultra"),
+            ("sfmPreselectorFeatures", "20000"),
+            ("sfmForceComponentRematch", "true"),
+        ):
+            argv.extend(("-set", f"{key}={value}"))
     if no_distortion:
         argv.extend(("-editInputSelection", "inpDistortionModel=0"))
+    elif distortion_model is not None:
+        input_value, alignment_value = distortion_models[distortion_model]
+        argv.extend(("-set", f"sfmDistortionModel={alignment_value}"))
+        argv.extend(("-editInputSelection", f"inpDistortionModel={input_value}"))
+    if distortion_prior is not None:
+        argv.extend(
+            ("-editInputSelection", f"inpDistortion={distortion_priors[distortion_prior]}")
+        )
     argv.extend(
         (
             "-align",
@@ -405,6 +446,10 @@ class RealityScanBackend:
             quality=config.realityscan_quality,
             texture=config.texture,
             no_distortion=config.realityscan_no_distortion,
+            distortion_model=config.realityscan_distortion_model,
+            distortion_prior=config.realityscan_distortion_prior,
+            shared_intrinsics=config.realityscan_shared_intrinsics,
+            sensitive_alignment=config.realityscan_sensitive_alignment,
             assets_dir=self.assets_dir,
         )
 
@@ -440,6 +485,10 @@ class RealityScanBackend:
             quality=quality,
             texture=config.texture,
             no_distortion=config.realityscan_no_distortion,
+            distortion_model=config.realityscan_distortion_model,
+            distortion_prior=config.realityscan_distortion_prior,
+            shared_intrinsics=config.realityscan_shared_intrinsics,
+            sensitive_alignment=config.realityscan_sensitive_alignment,
             assets_dir=self.assets_dir,
         )
 
@@ -447,6 +496,10 @@ class RealityScanBackend:
             "executable": str(executable),
             "quality": quality,
             "texture": bool(config.texture and target is Target.MESH),
+            "distortion_model": config.realityscan_distortion_model,
+            "distortion_prior": config.realityscan_distortion_prior,
+            "shared_intrinsics": config.realityscan_shared_intrinsics,
+            "sensitive_alignment": config.realityscan_sensitive_alignment,
             "input_images": len(plan),
             "sparse_point_cloud": str(sparse_cloud),
             "command": argv,

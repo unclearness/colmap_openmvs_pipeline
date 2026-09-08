@@ -65,6 +65,24 @@ class ColmapBackendCommandTests(unittest.TestCase):
                 Mesher.DELAUNAY, delaunay_available=False
             )
 
+    def test_colmap_texture_target_returns_textured_mesh(self) -> None:
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            config = self._config(root, backend=BackendName.COLMAP, target=Target.MESH)
+            config.texture = True
+            runner = CommandRunner(root / "pipeline.log", dry_run=True, echo=False)
+            result = ColmapBackend(root / "colmap.exe").run(config, runner)
+            texturer = next(
+                record
+                for record in runner.records
+                if record.label == "colmap.mesh_texturer.0"
+            )
+            self.assertIn("--workspace_path", texturer.argv)
+            self.assertEqual(
+                result.meshes,
+                [root / "output" / "mesh" / "0" / "textured" / "mesh.obj"],
+            )
+
     def test_openmvs_mesh_uses_external_dense_point_cloud(self) -> None:
         with tempfile.TemporaryDirectory() as temp:
             root = Path(temp)
@@ -87,6 +105,29 @@ class ColmapBackendCommandTests(unittest.TestCase):
             output_index = reconstruct.argv.index("-o")
             self.assertTrue(
                 reconstruct.argv[output_index + 1].endswith("scene_mesh.ply")
+            )
+
+    def test_openmvs_textured_mesh_is_standard_obj(self) -> None:
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            config = self._config(
+                root, backend=BackendName.OPENMVS, target=Target.MESH
+            )
+            config.texture = True
+            runner = CommandRunner(root / "pipeline.log", dry_run=True, echo=False)
+            result = OpenMVSBackend(
+                root / "colmap.exe", root / "openmvs", variant="cuda"
+            ).run(config, runner)
+            texturer = next(
+                record
+                for record in runner.records
+                if record.label == "openmvs.texture_mesh.0"
+            )
+            export_index = texturer.argv.index("--export-type")
+            self.assertEqual(texturer.argv[export_index + 1], "obj")
+            self.assertEqual(
+                result.meshes,
+                [root / "output" / "mesh" / "0" / "mesh.obj"],
             )
 
 

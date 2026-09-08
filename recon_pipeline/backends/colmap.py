@@ -22,6 +22,7 @@ from recon_pipeline.models import (
     Target,
 )
 from recon_pipeline.process import CommandRunner
+from recon_pipeline.textured_mesh import convert_colmap_textured_ply_to_obj
 
 
 class ColmapBackend:
@@ -345,7 +346,38 @@ class ColmapBackend:
         runner.run(f"colmap.{selected_mesher.value}_mesher.{model_id}", mesh_command)
         if not runner.dry_run:
             validate_mesh(mesh_path)
-        return dense_cloud, mesh_path
+
+        if not config.texture:
+            return dense_cloud, mesh_path
+
+        texture_dir = mesh_dir / "textured"
+        colmap_textured_ply = texture_dir / "mesh.ply"
+        textured_mesh = texture_dir / "mesh.obj"
+        texture_atlas = texture_dir / "texture.png"
+        if not runner.dry_run:
+            texture_dir.mkdir(parents=True, exist_ok=True)
+        scale_factor = "0.5" if config.preset is Preset.FAST else "1.0"
+        runner.run(
+            f"colmap.mesh_texturer.{model_id}",
+            self._command(
+                "mesh_texturer",
+                "--workspace_path",
+                workspace,
+                "--input_path",
+                mesh_path,
+                "--output_path",
+                texture_dir,
+                "--output_type",
+                "TXT",
+                "--MeshTextureMapping.texture_scale_factor",
+                scale_factor,
+            ),
+        )
+        if not runner.dry_run:
+            validate_mesh(colmap_textured_ply)
+            require_file(texture_atlas, "COLMAP texture atlas")
+            convert_colmap_textured_ply_to_obj(colmap_textured_ply, textured_mesh)
+        return dense_cloud, textured_mesh
 
     @staticmethod
     def select_mesher(requested: Mesher, delaunay_available: bool) -> Mesher:

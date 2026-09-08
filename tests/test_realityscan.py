@@ -187,6 +187,59 @@ class RealityScanCommandTests(unittest.TestCase):
         self.assertIn("inpDistortionModel=0", argv)
         self.assertNotIn("-calculateNormalModel", argv)
 
+    def test_shared_intrinsics_groups_calibration_and_lens_before_alignment(self) -> None:
+        argv = build_command(
+            Path("RealityScan.exe"),
+            Path("flat-images"),
+            Path("output"),
+            target=Target.SFM,
+            shared_intrinsics=True,
+            assets_dir=ASSETS,
+        )
+        self.assertLess(
+            _position(argv, "-setConstantCalibrationGroups"),
+            _position(argv, "-align"),
+        )
+        lens_position = _position(argv, "-setPriorLensGroup")
+        self.assertEqual(argv[lens_position + 1], "0")
+        self.assertLess(lens_position, _position(argv, "-align"))
+
+    def test_brown3_unknown_distortion_is_explicit_before_alignment(self) -> None:
+        argv = build_command(
+            Path("RealityScan.exe"),
+            Path("flat-images"),
+            Path("output"),
+            target=Target.SFM,
+            distortion_model="brown3",
+            distortion_prior="unknown",
+            assets_dir=ASSETS,
+        )
+        alignment = _position(argv, "-align")
+        self.assertIn("sfmDistortionModel=Brown3", argv[:alignment])
+        self.assertIn("inpDistortionModel=2", argv[:alignment])
+        self.assertIn("inpDistortion=0", argv[:alignment])
+
+    def test_sensitive_alignment_settings_precede_alignment(self) -> None:
+        argv = build_command(
+            Path("RealityScan.exe"),
+            Path("flat-images"),
+            Path("output"),
+            target=Target.SFM,
+            sensitive_alignment=True,
+            assets_dir=ASSETS,
+        )
+        alignment = _position(argv, "-align")
+        for value in (
+            "sfmMaxFeaturesPerMpx=20000",
+            "sfmMaxFeaturesPerImage=80000",
+            "sfmImagesOverlap=High",
+            "sfmDetectorSensitivity=Ultra",
+            "sfmPreselectorFeatures=20000",
+            "sfmForceComponentRematch=true",
+        ):
+            self.assertIn(value, argv)
+            self.assertLess(argv.index(value), alignment)
+
     def test_dense_target_is_rejected(self) -> None:
         with self.assertRaisesRegex(ValueError, "no standalone dense"):
             build_command(

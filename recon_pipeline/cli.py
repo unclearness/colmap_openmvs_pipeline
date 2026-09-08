@@ -93,6 +93,35 @@ def _add_pipeline_options(parser: argparse.ArgumentParser) -> None:
         "--realityscan-quality", choices=("normal", "high"), default="normal"
     )
     tools.add_argument("--realityscan-no-distortion", action="store_true")
+    tools.add_argument(
+        "--realityscan-distortion-model",
+        choices=(
+            "division",
+            "brown3",
+            "brown4",
+            "brown3-tangential2",
+            "brown4-tangential2",
+        ),
+        help="Explicit RealityScan lens model used for alignment.",
+    )
+    tools.add_argument(
+        "--realityscan-distortion-prior",
+        choices=("unknown", "approximate", "fixed"),
+        help="Prior strength for the selected RealityScan lens model.",
+    )
+    tools.add_argument(
+        "--realityscan-shared-intrinsics",
+        action="store_true",
+        help=(
+            "Put all RealityScan inputs in one calibration and lens group. "
+            "Use this for frames from one fixed camera/lens."
+        ),
+    )
+    tools.add_argument(
+        "--realityscan-sensitive-alignment",
+        action="store_true",
+        help="Increase RealityScan feature counts and use Ultra detector sensitivity.",
+    )
     tools.add_argument("--metashape-exe", type=_path)
     tools.add_argument("--metashape-python", type=_path)
 
@@ -164,6 +193,10 @@ def _config_from_args(
         realityscan_exe=args.realityscan_exe,
         realityscan_quality=args.realityscan_quality,
         realityscan_no_distortion=args.realityscan_no_distortion,
+        realityscan_distortion_model=args.realityscan_distortion_model,
+        realityscan_distortion_prior=args.realityscan_distortion_prior,
+        realityscan_shared_intrinsics=args.realityscan_shared_intrinsics,
+        realityscan_sensitive_alignment=args.realityscan_sensitive_alignment,
         metashape_exe=args.metashape_exe,
         metashape_python=args.metashape_python,
     )

@@ -18,11 +18,21 @@ class CliTests(unittest.TestCase):
                 "sfm",
                 "--realityscan-quality",
                 "high",
+                "--realityscan-shared-intrinsics",
+                "--realityscan-sensitive-alignment",
+                "--realityscan-distortion-model",
+                "brown3",
+                "--realityscan-distortion-prior",
+                "unknown",
             ]
         )
         self.assertEqual(args.backend, "realityscan")
         self.assertEqual(args.target, "sfm")
         self.assertEqual(args.realityscan_quality, "high")
+        self.assertTrue(args.realityscan_shared_intrinsics)
+        self.assertTrue(args.realityscan_sensitive_alignment)
+        self.assertEqual(args.realityscan_distortion_model, "brown3")
+        self.assertEqual(args.realityscan_distortion_prior, "unknown")
 
     def test_openmvs_cpu_switch(self) -> None:
         args = build_parser().parse_args(

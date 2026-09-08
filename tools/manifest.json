@@ -46,6 +46,55 @@
           "probe": "vc17/x64/Release/DensifyPointCloud.exe"
         }
       }
+    },
+    "azure-kinect": {
+      "version": "1.4.2",
+      "release_url": "https://github.com/microsoft/Azure-Kinect-Sensor-SDK/tree/v1.4.2",
+      "license": "MIT plus Microsoft redistributables",
+      "license_url": "https://github.com/microsoft/Azure-Kinect-Sensor-SDK/blob/v1.4.2/LICENSE",
+      "default_variant": "windows",
+      "variants": {
+        "windows": {
+          "url": "https://api.nuget.org/v3-flatcontainer/microsoft.azure.kinect.sensor/1.4.2/microsoft.azure.kinect.sensor.1.4.2.nupkg",
+          "sha256": "bfa9e82a74a7b63693e766703c3fc58606cd3d2a1fcfec2ab944f51dcff1932e",
+          "archive": "Microsoft.Azure.Kinect.Sensor.1.4.2.zip",
+          "install_dir": "Azure-Kinect-Sensor-SDK-1.4.2",
+          "probe": "lib/native/amd64/release/k4a.dll"
+        }
+      }
+    },
+    "orbbec-k4a": {
+      "version": "2.0.12",
+      "release_url": "https://github.com/orbbec/OrbbecSDK-K4A-Wrapper/releases/tag/v2.0.12",
+      "license": "MIT",
+      "license_url": "https://github.com/orbbec/OrbbecSDK-K4A-Wrapper/blob/v2.0.12/LICENSE",
+      "default_variant": "windows",
+      "variants": {
+        "windows": {
+          "url": "https://github.com/orbbec/OrbbecSDK-K4A-Wrapper/releases/download/v2.0.12/OrbbecSDK_K4A_Wrapper_v2.0.12_windows_202605090937.zip",
+          "sha256": "b476d989bf2954f1b33e2cdb9e21c0f9e8ba483c5e407fb4f3b6caf17d88ad46",
+          "archive": "OrbbecSDK_K4A_Wrapper_v2.0.12_windows_202605090937.zip",
+          "install_dir": "OrbbecSDK-K4A-Wrapper-2.0.12",
+          "probe": "bin/k4a.dll"
+        }
+      }
+    },
+    "foundationstereo": {
+      "version": "2.0",
+      "release_url": "https://catalog.ngc.nvidia.com/orgs/nvidia/tao/models/foundationstereo/deployable_foundation_stereo_s_dynamic_v2.0/file-browser",
+      "license": "NVIDIA Open Model License",
+      "license_url": "https://www.nvidia.com/en-us/agreements/enterprise-software/nvidia-open-model-license/",
+      "default_variant": "dynamic",
+      "variants": {
+        "dynamic": {
+          "url": "https://catalog.ngc.nvidia.com/orgs/nvidia/tao/models/foundationstereo/deployable_foundation_stereo_s_dynamic_v2.0/download-file?path=deployable_foundation_stereo_s_dynamic_v2.0.onnx",
+          "sha256": "a001a7bc0512a0bc3b3218194e924784e58b20656c6f1ea2c151024e555cfd64",
+          "archive": "deployable_foundation_stereo_s_dynamic_v2.0.onnx",
+          "install_dir": "FoundationStereo-NGC-2.0",
+          "probe": "deployable_foundation_stereo_s_dynamic_v2.0.onnx",
+          "kind": "file"
+        }
+      }
     }
   }
 }

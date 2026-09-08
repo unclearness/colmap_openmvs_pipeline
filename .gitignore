@@ -1,5 +1,6 @@
 # Python environments and caches
 .venv/
+.venv-open3d/
 __pycache__/
 *.py[cod]
 .pytest_cache/
@@ -24,6 +25,9 @@ checks.json
 tools/_downloads/
 tools/COLMAP-*/
 tools/OpenMVS-*/
+tools/OrbbecSDK-K4A-Wrapper-*/
+tools/Azure-Kinect-Sensor-SDK-*/
+tools/FoundationStereo-NGC-*/
 colmap-x64-windows-cuda/
 OpenMVS_Windows_x64/
 

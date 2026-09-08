@@ -8,6 +8,7 @@ dependencies = []
 
 [project.scripts]
 recon-pipeline = "recon_pipeline.cli:main"
+mannequin-pipeline = "recon_pipeline.mannequin:main"
 
 [build-system]
 requires = ["hatchling>=1.27"]

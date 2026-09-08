@@ -67,6 +67,12 @@ class ManifestTests(unittest.TestCase):
             openmvs["variants"]["cpu"]["sha256"],
             "0c31660c15c9ebc4c106873cf67564d9570d404aef7a6403451da1b6178b2167",
         )
+        foundationstereo = manifest["tools"]["foundationstereo"]
+        self.assertEqual(foundationstereo["version"], "2.0")
+        self.assertEqual(
+            foundationstereo["variants"]["dynamic"]["sha256"],
+            "a001a7bc0512a0bc3b3218194e924784e58b20656c6f1ea2c151024e555cfd64",
+        )
 
     def test_manifest_rejects_install_directory_traversal(self) -> None:
         with temporary_directory() as temporary:
@@ -184,6 +190,50 @@ class ArchiveTests(unittest.TestCase):
                 manifest_path=manifest_path,
                 download_dir=cache,
             ), installed)
+
+    def test_install_asset_supports_verified_direct_file(self) -> None:
+        with temporary_directory() as temporary:
+            root = Path(temporary)
+            cache = root / "cache"
+            model = cache / "model.onnx"
+            model.parent.mkdir(parents=True)
+            model.write_bytes(b"onnx")
+            digest = hashlib.sha256(model.read_bytes()).hexdigest()
+            manifest_path = root / "manifest.json"
+            manifest_path.write_text(
+                json.dumps(
+                    {
+                        "schema_version": 1,
+                        "tools": {
+                            "model": {
+                                "version": "1.0",
+                                "default_variant": "dynamic",
+                                "variants": {
+                                    "dynamic": {
+                                        "url": "https://example.invalid/model.onnx",
+                                        "sha256": digest,
+                                        "archive": "model.onnx",
+                                        "install_dir": "Model-1.0",
+                                        "probe": "model.onnx",
+                                        "kind": "file",
+                                    }
+                                },
+                            }
+                        },
+                    }
+                ),
+                encoding="utf-8",
+            )
+
+            installed = install_asset(
+                root,
+                "model",
+                "dynamic",
+                manifest_path=manifest_path,
+                download_dir=cache,
+            )
+
+            self.assertEqual((installed / "model.onnx").read_bytes(), b"onnx")
 
 
 class ResolverTests(unittest.TestCase):

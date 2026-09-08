@@ -121,6 +121,8 @@ def _validate_manifest_asset(tool_name: str, variant: str, asset: Any) -> None:
         raise ManifestError(f"{tool_name}:{variant} URL must use HTTPS")
     if not re.fullmatch(r"[0-9a-fA-F]{64}", asset["sha256"]):
         raise ManifestError(f"{tool_name}:{variant} has an invalid SHA-256")
+    if asset.get("kind", "archive") not in {"archive", "file"}:
+        raise ManifestError(f"{tool_name}:{variant} has an invalid asset kind")
     _validated_relative_parts(asset["archive"], label="archive name")
     _validated_relative_parts(asset["install_dir"], label="install directory")
     _validated_relative_parts(asset["probe"], label="probe path")
@@ -458,7 +460,12 @@ def install_asset(
     staging = Path(tempfile.mkdtemp(prefix=".install-", dir=tools_root))
     payload = staging / "payload"
     try:
-        extract_archive(archive_path, payload, seven_zip=seven_zip)
+        if asset.get("kind", "archive") == "file":
+            staged_probe = payload.joinpath(*probe_parts)
+            staged_probe.parent.mkdir(parents=True, exist_ok=True)
+            shutil.copy2(archive_path, staged_probe)
+        else:
+            extract_archive(archive_path, payload, seven_zip=seven_zip)
         staged_probe = payload.joinpath(*probe_parts)
         if not staged_probe.is_file():
             raise RuntimeError(

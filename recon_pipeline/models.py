@@ -63,6 +63,10 @@ class PipelineConfig:
     realityscan_exe: Path | None = None
     realityscan_quality: str = "normal"
     realityscan_no_distortion: bool = False
+    realityscan_distortion_model: str | None = None
+    realityscan_distortion_prior: str | None = None
+    realityscan_shared_intrinsics: bool = False
+    realityscan_sensitive_alignment: bool = False
     metashape_exe: Path | None = None
     metashape_python: Path | None = None
 
@@ -94,6 +98,32 @@ class PipelineConfig:
                 )
         if self.realityscan_quality not in {"normal", "high"}:
             raise ValueError("realityscan_quality must be normal or high")
+        distortion_models = {
+            "division",
+            "brown3",
+            "brown4",
+            "brown3-tangential2",
+            "brown4-tangential2",
+        }
+        if (
+            self.realityscan_distortion_model is not None
+            and self.realityscan_distortion_model not in distortion_models
+        ):
+            raise ValueError("unsupported RealityScan distortion model")
+        if (
+            self.realityscan_distortion_prior is not None
+            and self.realityscan_distortion_prior
+            not in {"unknown", "approximate", "fixed"}
+        ):
+            raise ValueError("unsupported RealityScan distortion prior")
+        if self.realityscan_no_distortion and (
+            self.realityscan_distortion_model is not None
+            or self.realityscan_distortion_prior is not None
+        ):
+            raise ValueError(
+                "realityscan_no_distortion cannot be combined with an explicit "
+                "distortion model or prior"
+            )
         if self.openmvs_variant not in {"auto", "cuda", "cpu"}:
             raise ValueError("openmvs_variant must be auto, cuda, or cpu")
         try:
